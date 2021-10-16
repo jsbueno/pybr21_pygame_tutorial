@@ -16,7 +16,7 @@ class GameOver(GameMessage):
 class GameNextStage(GameMessage):
     pass
 
-
+monstros = []
 
 class Mapa:
     def __init__(self, caminho, deslocamento=0, des_y=0):
@@ -31,7 +31,15 @@ class Mapa:
         for y, linha in enumerate(dados):
             linha = linha.strip("\n")
             for x, letra in enumerate(linha):
-                mapa[x, y] = letra
+                atributos = objetos.get(letra, {"color": (255, 255, 255)})
+                if not atributos:
+                    continue
+                if (classe:= atributos.get("class")):
+                    monstro = classe(self, x, y)
+                    monstros.append(monstro)
+                    atributos = None
+
+                mapa[x, y] = atributos
             if x > max_x:
                 max_x = x
         self.altura = len(dados)
@@ -123,7 +131,7 @@ class Personagem(Base):
 
         valor = self.mapa[self.x, self.y]
         if valor:
-            if paredes[valor].get("exit"):
+            if valor.get("exit"):
                 raise GameNextStage()
 
             self.x, self.y = ox, oy
@@ -138,31 +146,39 @@ class Monstro(Base):
     arquivo_imagem = "personagem.png"
 
     def movimento(self):
-        self.x += v
+        self.x -= v / 3
+        super().movimento()
 
-paredes = {
-    "#": { "color":(255, 255, 128)},
+
+objetos = {
+    " ": None,
+    "#": {"color":(255, 255, 128)},
     "*": { "color": (255, 0, 0)},
     "E": {"exit": True, "color": (0, 255, 0)},
     "M": {"class": Monstro, "color": (0, 0, 255)},
 }
 
-def desenha(tela, personagem, mapa):
+def desenha(tela, personagens, mapa):
             tela.fill(FUNDO)
+
+            # desenha mapa
             for mx in range(w):
                 for my in range(h):
                     valor = mapa[mapa.deslocamento + mx, mapa.des_y + my]
                     if valor:
-                        pygame.draw.rect(tela, paredes[valor]["color"] , (mx * BL, my * BL, BL, BL))
+                        pygame.draw.rect(tela, valor["color"] , (mx * BL, my * BL, BL, BL))
 
-            if personagem.vx or personagem.vy:
-                x = (personagem.ix - mapa.deslocamento) * BL
-                y = (personagem.iy - mapa.des_y) * BL
-            else:
-                x = round((personagem.ix - mapa.deslocamento) * BL)
-                y = round((personagem.iy - mapa.des_y) * BL)
-            tela.blit(personagem.imagem, (x, y))
-            # pygame.draw.rect(tela, (255, 0, 0), (int(x) * BL , int(y) * BL, BL, BL))
+            # desenha personagens:
+            for personagem in personagens:
+                if personagem.vx or personagem.vy:
+                    x = (personagem.ix - mapa.deslocamento) * BL
+                    y = (personagem.iy - mapa.des_y) * BL
+                else:
+                    x = round((personagem.ix - mapa.deslocamento) * BL)
+                    y = round((personagem.iy - mapa.des_y) * BL)
+                if x >= 0 and x + BL < W and y >= 0 and y + BL < H:
+                    tela.blit(personagem.imagem, (x, y))
+
             pygame.display.flip()
 
 
@@ -178,7 +194,10 @@ def principal():
         except GameNextStage:
             print("Essa era a última fase: você ganhou")
             raise
-        desenha(tela, personagem, mapa,)
+        for monstro in monstros:
+            monstro.movimento()
+
+        desenha(tela, [personagem, *monstros], mapa)
         pygame.time.delay(60)
 
 try:
