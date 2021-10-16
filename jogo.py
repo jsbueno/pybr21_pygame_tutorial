@@ -20,6 +20,7 @@ monstros = []
 
 class Mapa:
     def __init__(self, caminho, deslocamento=0, des_y=0):
+        self.personagem = None
         self.dados = self.le_mapa(caminho)
         self.deslocamento = deslocamento
         self.des_y = des_y
@@ -35,8 +36,11 @@ class Mapa:
                 if not atributos:
                     continue
                 if (classe:= atributos.get("class")):
-                    monstro = classe(self, x, y)
-                    monstros.append(monstro)
+                    entidade = classe(self, x, y)
+                    if classe is Personagem:
+                        self.personagem = entidade
+                    else:
+                        monstros.append(entidade)
                     atributos = None
 
                 mapa[x, y] = atributos
@@ -70,6 +74,13 @@ class Base:
         return self.mapa[self.ix, self.iy + 1] is not None
 
     def movimento(self):
+        if self.vx or self.vy:
+            self.x += self.vx
+            self.y += self.vy
+        else:
+            self.x= self.ix
+            self.y= self.iy
+
         if self.x < 0: self.x= 0
         if self.y < 0: self.y= 0
         if self.x >= self.mapa.largura:
@@ -95,6 +106,11 @@ class Base:
 class Personagem(Base):
     arquivo_imagem = "hominho.png"
 
+    def testa_colisao(self):
+        for monstro in monstros:
+            if monstro.ix == self.ix and monstro.iy == self.iy:
+                raise GameOver()
+
     def movimento(self, eventos):
         ox, oy = self.x, self.y
         for evento in eventos:
@@ -112,22 +128,14 @@ class Personagem(Base):
                 self.vx = 0
                 self.vy = 0
 
-        if self.vx or self.vy:
-            self.x += self.vx
-            self.y += self.vy
-        else:
-            self.x= self.ix
-            self.y= self.iy
+        super().movimento()
+
         parede_direita = self.mapa.deslocamento + w
         if self.x > parede_direita - 4 and (self.mapa.largura - self.mapa.deslocamento) > w:
             self.mapa.deslocamento += 6
 
         if self.x <  self.mapa.deslocamento + 4 and (self.mapa.deslocamento > 0):
             self.mapa.deslocamento -= 6
-            #if self.mapa.deslocamento < 0:
-                #self.mapa.deslocamento = 0
-
-        super().movimento()
 
         valor = self.mapa[self.x, self.y]
         if valor:
@@ -141,14 +149,22 @@ class Personagem(Base):
                 if self.vy < v:
                     self.vy += v
         self.tempo_de_pulo = max(self.tempo_de_pulo - 1, 0)
+        self.testa_colisao()
 
 class Monstro(Base):
     arquivo_imagem = "personagem.png"
 
-    def movimento(self):
-        self.x -= v / 3
-        super().movimento()
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.vx = -v
 
+    def movimento(self):
+        ox, oy = self.x, self.y
+        super().movimento()
+        if self.mapa[self.x, self.y] or not self.esta_no_chao:
+            self.x = ox
+            self.y = oy
+            self.vx = -self.vx
 
 objetos = {
     " ": None,
@@ -156,6 +172,7 @@ objetos = {
     "*": { "color": (255, 0, 0)},
     "E": {"exit": True, "color": (0, 255, 0)},
     "M": {"class": Monstro, "color": (0, 0, 255)},
+    "P": {"class": Personagem, "color": (0, 0, 255)},
 }
 
 def desenha(tela, personagens, mapa):
@@ -185,19 +202,18 @@ def desenha(tela, personagens, mapa):
 def principal():
     tela = pygame.display.set_mode(TAMANHO)
     mapa = Mapa("mapa0.txt")
-    personagem = Personagem(mapa, 0, 7)
 
     while True:
         eventos = pygame.event.get()
         try:
-            personagem.movimento(eventos)
+            mapa.personagem.movimento(eventos)
         except GameNextStage:
             print("Essa era a última fase: você ganhou")
             raise
         for monstro in monstros:
             monstro.movimento()
 
-        desenha(tela, [personagem, *monstros], mapa)
+        desenha(tela, [mapa.personagem, *monstros], mapa)
         pygame.time.delay(60)
 
 try:
