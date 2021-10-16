@@ -3,11 +3,11 @@ import random
 
 FUNDO = 0, 0, 0
 W, H = TAMANHO = 640, 480
-w, h = 32, 24
+w, h = 16, 12
 BLOCO = BL = W / w
+v = 1 / 3
 
 def movimento(eventos, x, y, vx, vy):
-    v = 1 / 3
     for evento in eventos:
         if evento.type == pygame.KEYDOWN:
             if evento.key == pygame.K_LEFT: vx = -v
@@ -25,21 +25,25 @@ def movimento(eventos, x, y, vx, vy):
     if y >= h: y = h - 1
     return x, y, vx, vy
 
-def desenha(tela, x, y):
+def desenha(tela, personagem, x, y):
             tela.fill(FUNDO)
-            pygame.draw.rect(tela, (255, 0, 0), (int(x) * BL , int(y) * BL, BL, BL))
+            tela.blit(personagem, (int(x) * BL , int(y) * BL))
+            # pygame.draw.rect(tela, (255, 0, 0), (int(x) * BL , int(y) * BL, BL, BL))
             pygame.display.flip()
-
 
 def principal():
     tela = pygame.display.set_mode(TAMANHO)
+    personagem = pygame.image.load("hominho.png")
+    escala = 1 / (personagem.get_width() / BL)
+    personagem = pygame.transform.rotozoom(personagem, 0, escala)
+
     x, y = (0, 0)
     vx, vy = 0, 0
 
     while True:
         eventos = pygame.event.get()
         x, y, vx, vy = movimento(eventos, x, y, vx, vy)
-        desenha(tela, x, y)
+        desenha(tela, personagem, x, y)
         pygame.time.delay(60)
 
 try:
