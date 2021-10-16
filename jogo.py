@@ -7,12 +7,19 @@ w, h = 16, 12
 BLOCO = BL = W / w
 v = 1 / 3
 
-class GameOver(Exception):
+class GameMessage(Exception):
+    pass
+
+class GameOver(GameMessage):
+    pass
+
+class GameNextStage(GameMessage):
     pass
 
 paredes = {
-    "#": (255, 255, 128),
-    "*": (255, 0, 0),
+    "#": { "color":(255, 255, 128)},
+    "*": { "color": (255, 0, 0)},
+    "E": {"exit": True, "color": (0, 255, 0)},
 }
 
 
@@ -53,8 +60,11 @@ class Personagem:
         self.vy = 0
         self.mapa = mapa
         self.carrega_imagem(caminho)
-        self.pulo = False
-        self.tempo_de_queda = 0
+        self.tempo_de_pulo = 0
+
+    @property
+    def esta_no_chao(self):
+        return self.mapa[self.ix, self.iy + 1] is not None
 
     def movimento(self, eventos):
         ox, oy = self.x, self.y
@@ -63,22 +73,22 @@ class Personagem:
                 if evento.key == pygame.K_LEFT: self.vx = -v
                 if evento.key == pygame.K_RIGHT: self.vx = v
                 if evento.key == pygame.K_DOWN: self.vy = v
-                if evento.key == pygame.K_UP:
-                    if self.tempo_de_queda == 0:
+                if evento.key == pygame.K_UP or evento.key == pygame.K_SPACE:
+                    if self.esta_no_chao:
                         self.vy = -v * 3
-                        self.pulo = True
-                    elif self.tempo_de_queda == 1 and self.pulo:
-                        self.vy = -v * 3
-                        self.pulo = True
-
+                        self.tempo_de_pulo = 2
                 if evento.key == pygame.K_ESCAPE:
                     raise GameOver()
             if evento.type == pygame.KEYUP:
                 self.vx = 0
                 self.vy = 0
-        self.x += self.vx
-        self.y += self.vy
 
+        if self.vx or self.vy:
+            self.x += self.vx
+            self.y += self.vy
+        else:
+            self.x= self.ix
+            self.y= self.iy
         parede_direita = self.mapa.deslocamento + w
         if self.x > parede_direita - 4 and (self.mapa.largura - self.mapa.deslocamento) > w:
             self.mapa.deslocamento += 6
@@ -93,18 +103,26 @@ class Personagem:
         if self.x >= self.mapa.largura: self.x = self.mapa.largura - 1
         if self.y >= self.mapa.altura: self.y = self.mapa.altura - 1
 
-        if self.mapa[self.x, self.y]:
+        valor = self.mapa[self.x, self.y]
+        if valor:
+            if paredes[valor].get("exit"):
+                raise GameNextStage()
+
             self.x, self.y = ox, oy
-        else:
-            chao = self.mapa[self.x, self.y + 1]
-            if not chao:
+        if not self.esta_no_chao:
+            if self.tempo_de_pulo == 0:
                 self.y += v
-                self.tempo_de_queda += 1
-                if self.vy > 0:
-                    self.vy -= v
-            else:
-                self.pulo = False
-                self.tempo_de_queda = 0
+                if self.vy < v:
+                    self.vy += v
+        self.tempo_de_pulo = max(self.tempo_de_pulo - 1, 0)
+
+    @property
+    def ix(self):
+        return round(self.x)
+
+    @property
+    def iy(self):
+        return round(self.y)
 
     def carrega_imagem(self, caminho):
         imagem = pygame.image.load(caminho)
@@ -118,10 +136,15 @@ def desenha(tela, personagem, mapa):
                 for my in range(h):
                     valor = mapa[mapa.deslocamento + mx, mapa.des_y + my]
                     if valor:
-                        pygame.draw.rect(tela, paredes[valor] , (mx * BL, my * BL, BL, BL))
+                        pygame.draw.rect(tela, paredes[valor]["color"] , (mx * BL, my * BL, BL, BL))
 
-            x = round((personagem.x - mapa.deslocamento) * BL)
-            y = round((personagem.y - mapa.des_y) * BL)
+
+            if personagem.vx or personagem.vy:
+                x = (personagem.ix - mapa.deslocamento) * BL
+                y = (personagem.iy - mapa.des_y) * BL
+            else:
+                x = round((personagem.ix - mapa.deslocamento) * BL)
+                y = round((personagem.iy - mapa.des_y) * BL)
             tela.blit(personagem.imagem, (x, y))
             # pygame.draw.rect(tela, (255, 0, 0), (int(x) * BL , int(y) * BL, BL, BL))
             pygame.display.flip()
@@ -134,13 +157,17 @@ def principal():
 
     while True:
         eventos = pygame.event.get()
-        personagem.movimento(eventos)
+        try:
+            personagem.movimento(eventos)
+        except GameNextStage:
+            print("Essa era a última fase: você ganhou")
+            raise
         desenha(tela, personagem, mapa,)
         pygame.time.delay(60)
 
 try:
     principal()
-except GameOver:
+except GameMessage:
     print("Jogo terminado sem erros!")
 finally:
     pygame.quit()
