@@ -7,6 +7,11 @@ w, h = 16, 12
 BLOCO = BL = W / w
 v = 1 / 3
 
+paredes = {
+    "#": (255, 255, 128),
+    "*": (255, 0, 0),
+}
+
 def lemapa(nome):
     dados = open(nome).readlines()
     mapa = {}
@@ -39,8 +44,10 @@ def desenha(tela, personagem, mapa, x, y):
             tela.fill(FUNDO)
             for mx in range(0, w):
                 for my in range(0, h):
-                    if mapa.get((mx, my)) == "#":
-                        pygame.draw.rect(tela, (255,255, 128), (mx * BL, my * BL, BL, BL))
+                    cod =  mapa.get((mx, my), " ")
+                    if cod != " ":
+                        pygame.draw.rect(tela, paredes[cod] , (mx * BL, my * BL, BL, BL))
+
             tela.blit(personagem, (round(x) * BL , round(y) * BL))
             # pygame.draw.rect(tela, (255, 0, 0), (int(x) * BL , int(y) * BL, BL, BL))
             pygame.display.flip()
