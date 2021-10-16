@@ -27,7 +27,7 @@ def movimento(eventos, x, y, vx, vy):
 
 def desenha(tela, personagem, x, y):
             tela.fill(FUNDO)
-            tela.blit(personagem, (int(x) * BL , int(y) * BL))
+            tela.blit(personagem, (round(x) * BL , round(y) * BL))
             # pygame.draw.rect(tela, (255, 0, 0), (int(x) * BL , int(y) * BL, BL, BL))
             pygame.display.flip()
 
