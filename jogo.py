@@ -16,11 +16,6 @@ class GameOver(GameMessage):
 class GameNextStage(GameMessage):
     pass
 
-paredes = {
-    "#": { "color":(255, 255, 128)},
-    "*": { "color": (255, 0, 0)},
-    "E": {"exit": True, "color": (0, 255, 0)},
-}
 
 
 class Mapa:
@@ -50,21 +45,47 @@ class Mapa:
             valor = None
         return valor
 
+class Base:
+    arquivo_imagem: str
 
-
-class Personagem:
-    def __init__(self, caminho, mapa, x, y):
+    def __init__(self,mapa, x, y):
         self.x = x
         self.y = y
         self.vx = 0
         self.vy = 0
         self.mapa = mapa
-        self.carrega_imagem(caminho)
+        self.carrega_imagem()
         self.tempo_de_pulo = 0
 
     @property
     def esta_no_chao(self):
         return self.mapa[self.ix, self.iy + 1] is not None
+
+    def movimento(self):
+        if self.x < 0: self.x= 0
+        if self.y < 0: self.y= 0
+        if self.x >= self.mapa.largura:
+            self.x = self.mapa.largura - 1
+        if self.y >= self.mapa.altura:
+            self.y = self.mapa.altura - 1
+
+    @property
+    def ix(self):
+        return round(self.x)
+
+    @property
+    def iy(self):
+        return round(self.y)
+
+    def carrega_imagem(self):
+        imagem = pygame.image.load(self.arquivo_imagem)
+        escala = 1 / (imagem.get_width() / BL)
+        imagem = pygame.transform.rotozoom(imagem, 0, escala)
+        self.imagem = imagem
+
+
+class Personagem(Base):
+    arquivo_imagem = "hominho.png"
 
     def movimento(self, eventos):
         ox, oy = self.x, self.y
@@ -98,10 +119,7 @@ class Personagem:
             #if self.mapa.deslocamento < 0:
                 #self.mapa.deslocamento = 0
 
-        if self.x < 0: self.x= 0
-        if self.y < 0: self.y= 0
-        if self.x >= self.mapa.largura: self.x = self.mapa.largura - 1
-        if self.y >= self.mapa.altura: self.y = self.mapa.altura - 1
+        super().movimento()
 
         valor = self.mapa[self.x, self.y]
         if valor:
@@ -116,19 +134,18 @@ class Personagem:
                     self.vy += v
         self.tempo_de_pulo = max(self.tempo_de_pulo - 1, 0)
 
-    @property
-    def ix(self):
-        return round(self.x)
+class Monstro(Base):
+    arquivo_imagem = "personagem.png"
 
-    @property
-    def iy(self):
-        return round(self.y)
+    def movimento(self):
+        self.x += v
 
-    def carrega_imagem(self, caminho):
-        imagem = pygame.image.load(caminho)
-        escala = 1 / (imagem.get_width() / BL)
-        imagem = pygame.transform.rotozoom(imagem, 0, escala)
-        self.imagem = imagem
+paredes = {
+    "#": { "color":(255, 255, 128)},
+    "*": { "color": (255, 0, 0)},
+    "E": {"exit": True, "color": (0, 255, 0)},
+    "M": {"class": Monstro, "color": (0, 0, 255)},
+}
 
 def desenha(tela, personagem, mapa):
             tela.fill(FUNDO)
@@ -137,7 +154,6 @@ def desenha(tela, personagem, mapa):
                     valor = mapa[mapa.deslocamento + mx, mapa.des_y + my]
                     if valor:
                         pygame.draw.rect(tela, paredes[valor]["color"] , (mx * BL, my * BL, BL, BL))
-
 
             if personagem.vx or personagem.vy:
                 x = (personagem.ix - mapa.deslocamento) * BL
@@ -153,7 +169,7 @@ def desenha(tela, personagem, mapa):
 def principal():
     tela = pygame.display.set_mode(TAMANHO)
     mapa = Mapa("mapa0.txt")
-    personagem = Personagem("hominho.png", mapa, 0, 7)
+    personagem = Personagem(mapa, 0, 7)
 
     while True:
         eventos = pygame.event.get()
