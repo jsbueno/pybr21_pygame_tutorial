@@ -24,7 +24,6 @@ def lemapa(nome):
             mapa[x, y] = letra
     return mapa
 
-
 class Personagem:
     def __init__(self, caminho, mapa, x, y):
         self.x = x
@@ -33,6 +32,8 @@ class Personagem:
         self.vy = 0
         self.mapa = mapa
         self.carrega_imagem(caminho)
+        self.pulo = False
+        self.tempo_de_queda = 0
 
     def movimento(self, eventos):
         ox, oy = self.x, self.y
@@ -42,12 +43,19 @@ class Personagem:
                 if evento.key == pygame.K_RIGHT: self.vx = v
                 if evento.key == pygame.K_DOWN: self.vy = v
                 if evento.key == pygame.K_UP:
-                    self.vy = -v * 3
+                    if self.tempo_de_queda == 0:
+                        self.vy = -v * 3
+                        self.pulo = True
+                    elif self.tempo_de_queda == 1 and self.pulo:
+                        self.vy = -v * 3
+                        self.pulo = True
+
                 if evento.key == pygame.K_ESCAPE:
                     raise GameOver()
             if evento.type == pygame.KEYUP:
                 self.vx = 0
-                self.vy = 0
+                if self.pulo == 0:
+                    self.vy = 0
         self.x += self.vx
         self.y += self.vy
         if self.x < 0: self.x= 0
@@ -62,6 +70,12 @@ class Personagem:
             chao = self.mapa.get((round(self.x), round(self.y) + 1), " ")
             if chao == " ":
                 self.y += v
+                self.tempo_de_queda += 1
+            else:
+                self.pulo = False
+                self.tempo_de_queda = 0
+
+
 
     def carrega_imagem(self, caminho):
         imagem = pygame.image.load(caminho)
@@ -80,8 +94,6 @@ def desenha(tela, personagem, mapa, x, y):
             tela.blit(personagem, (round(x) * BL , round(y) * BL))
             # pygame.draw.rect(tela, (255, 0, 0), (int(x) * BL , int(y) * BL, BL, BL))
             pygame.display.flip()
-
-
 
 
 def principal():
