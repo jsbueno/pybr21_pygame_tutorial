@@ -7,6 +7,9 @@ w, h = 16, 12
 BLOCO = BL = W / w
 v = 1 / 3
 
+class GameOver(Exception):
+    pass
+
 paredes = {
     "#": (255, 255, 128),
     "*": (255, 0, 0),
@@ -22,14 +25,16 @@ def lemapa(nome):
     return mapa
 
 
-def movimento(eventos, x, y, vx, vy):
+def movimento(eventos, mapa, x, y, vx, vy):
+    ox, oy = x, y
     for evento in eventos:
         if evento.type == pygame.KEYDOWN:
             if evento.key == pygame.K_LEFT: vx = -v
             if evento.key == pygame.K_RIGHT: vx = v
             if evento.key == pygame.K_DOWN: vy = v
             if evento.key == pygame.K_UP: vy = -v
-            if evento.key == pygame.K_ESCAPE: return
+            if evento.key == pygame.K_ESCAPE:
+                raise GameOver()
         if evento.type == pygame.KEYUP:
             vx = vy = 0
     x = x + vx
@@ -38,6 +43,12 @@ def movimento(eventos, x, y, vx, vy):
     if y < 0: y= 0
     if x >= w: x = w - 1
     if y >= h: y = h - 1
+
+    cod = mapa.get((round(x), round(y)), " ")
+    if cod != " ":
+        x, y = ox, oy
+        if cod == "*":
+            raise GameOver()
     return x, y, vx, vy
 
 def desenha(tela, personagem, mapa, x, y):
@@ -60,17 +71,19 @@ def principal():
     personagem = pygame.transform.rotozoom(personagem, 0, escala)
     mapa = lemapa("mapa0.txt")
 
-    x, y = (0, 0)
+    x, y = 0, 7
     vx, vy = 0, 0
 
     while True:
         eventos = pygame.event.get()
-        x, y, vx, vy = movimento(eventos, x, y, vx, vy)
+        x, y, vx, vy = movimento(eventos, mapa, x, y, vx, vy)
         desenha(tela, personagem, mapa, x, y)
         pygame.time.delay(60)
 
 try:
     principal()
+except GameOver:
+    print("Jogo terminado sem erros!")
 finally:
     pygame.quit()
 
