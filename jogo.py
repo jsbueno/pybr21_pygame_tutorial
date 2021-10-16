@@ -25,31 +25,49 @@ def lemapa(nome):
     return mapa
 
 
-def movimento(eventos, mapa, x, y, vx, vy):
-    ox, oy = x, y
-    for evento in eventos:
-        if evento.type == pygame.KEYDOWN:
-            if evento.key == pygame.K_LEFT: vx = -v
-            if evento.key == pygame.K_RIGHT: vx = v
-            if evento.key == pygame.K_DOWN: vy = v
-            if evento.key == pygame.K_UP: vy = -v
-            if evento.key == pygame.K_ESCAPE:
-                raise GameOver()
-        if evento.type == pygame.KEYUP:
-            vx = vy = 0
-    x = x + vx
-    y = y + vy
-    if x < 0: x= 0
-    if y < 0: y= 0
-    if x >= w: x = w - 1
-    if y >= h: y = h - 1
+class Personagem:
+    def __init__(self, caminho, mapa, x, y):
+        self.x = x
+        self.y = y
+        self.vx = 0
+        self.vy = 0
+        self.mapa = mapa
+        self.carrega_imagem(caminho)
 
-    cod = mapa.get((round(x), round(y)), " ")
-    if cod != " ":
-        x, y = ox, oy
-        if cod == "*":
-            raise GameOver()
-    return x, y, vx, vy
+    def movimento(self, eventos):
+        ox, oy = self.x, self.y
+        for evento in eventos:
+            if evento.type == pygame.KEYDOWN:
+                if evento.key == pygame.K_LEFT: self.vx = -v
+                if evento.key == pygame.K_RIGHT: self.vx = v
+                if evento.key == pygame.K_DOWN: self.vy = v
+                if evento.key == pygame.K_UP:
+                    self.vy = -v * 3
+                if evento.key == pygame.K_ESCAPE:
+                    raise GameOver()
+            if evento.type == pygame.KEYUP:
+                self.vx = 0
+                self.vy = 0
+        self.x += self.vx
+        self.y += self.vy
+        if self.x < 0: self.x= 0
+        if self.y < 0: self.y= 0
+        if self.x >= w: self.x = w - 1
+        if self.y >= h: self.y = h - 1
+
+        cod = self.mapa.get((round(self.x), round(self.y)), " ")
+        if cod != " ":
+            self.x, self.y = ox, oy
+        else:
+            chao = self.mapa.get((round(self.x), round(self.y) + 1), " ")
+            if chao == " ":
+                self.y += v
+
+    def carrega_imagem(self, caminho):
+        imagem = pygame.image.load(caminho)
+        escala = 1 / (imagem.get_width() / BL)
+        imagem = pygame.transform.rotozoom(imagem, 0, escala)
+        self.imagem = imagem
 
 def desenha(tela, personagem, mapa, x, y):
             tela.fill(FUNDO)
@@ -64,20 +82,17 @@ def desenha(tela, personagem, mapa, x, y):
             pygame.display.flip()
 
 
+
+
 def principal():
     tela = pygame.display.set_mode(TAMANHO)
-    personagem = pygame.image.load("hominho.png")
-    escala = 1 / (personagem.get_width() / BL)
-    personagem = pygame.transform.rotozoom(personagem, 0, escala)
     mapa = lemapa("mapa0.txt")
-
-    x, y = 0, 7
-    vx, vy = 0, 0
+    personagem = Personagem("hominho.png", mapa, 0, 7)
 
     while True:
         eventos = pygame.event.get()
-        x, y, vx, vy = movimento(eventos, mapa, x, y, vx, vy)
-        desenha(tela, personagem, mapa, x, y)
+        personagem.movimento(eventos)
+        desenha(tela, personagem.imagem, mapa, personagem.x, personagem.y)
         pygame.time.delay(60)
 
 try:
